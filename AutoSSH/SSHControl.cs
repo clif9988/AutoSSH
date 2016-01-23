@@ -32,8 +32,8 @@ namespace AutoSSH
             //QueuedCommands = new List<SSHJob>();
         }
 
-        private List<SSHJob> QueuedCommands { get; set; } = null;
-        Logger TheLog = null;
+        //private List<SSHJob> QueuedCommands { get; set; } = null;
+        private Logger TheLog = null;
         private readonly double _worker_delay;
         private CancellationTokenSource _cancel = null;
         private System.Timers.Timer _worker { get; set; } = null;
@@ -65,7 +65,7 @@ namespace AutoSSH
 
             _running = true;
 
-            QueuedCommands = LoadConfig();
+            var QueuedCommands = LoadConfig();
 
             var jobs_todo = QueuedCommands.Where(x => x.RunNow);
             if (!jobs_todo.Any())
@@ -83,7 +83,6 @@ namespace AutoSSH
                 //job.NextRun = job.NextRun + TimeSpan.FromDays(1);
             }
 
-            QueuedCommands = null;
             _running = false;
             if (Debugger.IsAttached)
                 ((System.Timers.Timer)sender).Enabled = true;
@@ -116,7 +115,7 @@ namespace AutoSSH
                 TheLog.Error($"job::ip[{job.IP}] user[{job.User}] commands[{logmsg}]");
                 TheLog.Error($"{ex.Source}");
                 TheLog.Error(ex);
-                QueuedCommands?.Remove(job);
+                //QueuedCommands?.Remove(job);
             }
         }
 
