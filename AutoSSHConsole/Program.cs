@@ -1,21 +1,16 @@
 ﻿using AutoSSH;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AutoSSHConsole
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
-
-            var ter = DateTime.Now.GetDateTimeFormats();
             Console.WindowWidth = 100;
             Console.WindowHeight = 50;
-            
+
             SSHControl ssh = new SSHControl();
             //ssh.Start();
             SSHJob job = new SSHJob();
@@ -37,7 +32,6 @@ namespace AutoSSHConsole
                 ssh.ExecSSHJob(job);
                 job.Commands.Remove(cmd);
             }
-
 
             //ssh.Stop();
         }

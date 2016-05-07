@@ -1,40 +1,34 @@
 ﻿using NLog;
 using NLog.Config;
 using NLog.Targets;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AutoSSH
 {
     public class MyLog
     {
-
         public static void initconfig()
         {
             var config = new LoggingConfiguration();
 
-            // Step 2. Create targets and add them to the configuration 
-            var consoleTarget = new ColoredConsoleTarget();            
+            // Step 2. Create targets and add them to the configuration
+            var consoleTarget = new ColoredConsoleTarget();
             config.AddTarget("console", consoleTarget);
-            
-            var fileTarget = new FileTarget();            
+
+            var fileTarget = new FileTarget();
             config.AddTarget("file", fileTarget);
 
-            // Step 3. Set target properties 
+            // Step 3. Set target properties
             consoleTarget.Layout = @"${date:format=HH\:mm\:ss} ${logger} ${message}";
             fileTarget.FileName = @"${basedir}/Logs/${date:format=MM-dd-yyyy}-AutoSSH.log";
             fileTarget.ArchiveAboveSize = 104857600;
             fileTarget.ArchiveNumbering = ArchiveNumberingMode.DateAndSequence;
             fileTarget.CreateDirs = true;
             fileTarget.KeepFileOpen = false;
-            
+            fileTarget.EnableArchiveFileCompression = true;
             fileTarget.Layout = @"${date:format=MM-dd-yyyy-HH\:mm\:ss} ${logger} ${message}";
 
             // Step 4. Define rules
-            var rule1 = new LoggingRule("*", LogLevel.Trace, consoleTarget);            
+            var rule1 = new LoggingRule("*", LogLevel.Trace, consoleTarget);
             config.LoggingRules.Add(rule1);
 
             var rule2 = new LoggingRule("*", LogLevel.Trace, fileTarget);

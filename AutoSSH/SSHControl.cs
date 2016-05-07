@@ -3,14 +3,12 @@ using NLog;
 using Renci.SshNet;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
+using SysTimer = System.Timers.Timer;
 
 namespace AutoSSH
 {
@@ -21,9 +19,9 @@ namespace AutoSSH
             _cancel = new CancellationTokenSource();
             // _worker_delay = TimeSpan.FromHours(1).TotalMilliseconds;
 
-            int mins = Convert.ToInt32(ConfigurationManager.AppSettings["readcfg_interval_minutes"]);
+            int mins = 2;//Convert.ToInt32(ConfigurationManager.AppSettings["readcfg_interval_minutes"]);
             _worker_delay = TimeSpan.FromMinutes(mins).TotalMilliseconds;
-            _worker = new System.Timers.Timer(_worker_delay);
+            _worker = new SysTimer(_worker_delay);
             _worker.Elapsed += _worker_Elapsed;
 
             MyLog.initconfig();
@@ -34,15 +32,16 @@ namespace AutoSSH
 
         //private List<SSHJob> QueuedCommands { get; set; } = null;
         private Logger TheLog = null;
+        
         private readonly double _worker_delay;
         private CancellationTokenSource _cancel = null;
-        private System.Timers.Timer _worker { get; set; } = null;
+        private SysTimer _worker { get; set; } = null;
         private volatile bool _running = false;
 
         public void Start()
         {
-            //QueuedCommands = LoadConfig();           
-            _worker.Start();   
+            //QueuedCommands = LoadConfig();
+            _worker.Start();
         }
 
         public void Stop()
@@ -50,42 +49,37 @@ namespace AutoSSH
             _cancel.Cancel();
             _worker.Dispose();
             _worker = null;
-
         }
-
 
         private void _worker_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             if (_cancel.IsCancellationRequested) return;
-            if ((sender as System.Timers.Timer) == null) return;
+            if (!(sender is SysTimer)) return;
             if (Debugger.IsAttached)
-                ((System.Timers.Timer)sender).Enabled = false;
+                ((SysTimer)sender).Enabled = false;
 
             if (_running) return;
-
             _running = true;
-
-            var QueuedCommands = LoadConfig();
-
-            var jobs_todo = QueuedCommands.Where(x => x.RunNow);
-            if (!jobs_todo.Any())
+            try
             {
-                TheLog.Info($"No ready jobs found; queued[{QueuedCommands.Count}]");
+                var jobs_todo = LoadConfig().Where(x => x.RunNow);                
+                if (!jobs_todo.Any())
+                {
+                    TheLog.Info($"No ready jobs found");
+                    return;
+                }
+                
+                TheLog.Info($"Found {jobs_todo.Count()} jobs!");
+                foreach (var job in jobs_todo)
+                    ExecSSHJob(job);
+            }
+            finally
+            {
+                TheLog.Info("");
                 _running = false;
-                return;
+                if (Debugger.IsAttached)
+                    ((System.Timers.Timer)sender).Enabled = true;
             }
-
-
-            TheLog.Info($"Found {jobs_todo.Count()} jobs!");
-            foreach (var job in jobs_todo)
-            {
-                ExecSSHJob(job);
-                //job.NextRun = job.NextRun + TimeSpan.FromDays(1);
-            }
-
-            _running = false;
-            if (Debugger.IsAttached)
-                ((System.Timers.Timer)sender).Enabled = true;
         }
 
         public void ExecSSHJob(SSHJob job)
@@ -95,14 +89,13 @@ namespace AutoSSH
             {
                 using (var client = new SshClient(job.IP, job.User, job.PW))
                 {
-
                     client.Connect();
                     foreach (var cmd in job.Commands)
                     {
                         TheLog.Info($"Running: [{cmd}]");
                         var result = client.RunCommand(cmd);
                         TheLog.Info($"Error: {result.Error}");
-                        TheLog.Info($"Response: {result.Result}");   
+                        TheLog.Info($"Response: {result.Result}");
                     }
                     client.Disconnect();
                     TheLog.Info($"Disconnecting from {job.IP}");
@@ -131,12 +124,12 @@ namespace AutoSSH
             }
 
             var json = File.ReadAllText(file);
-            var config = JsonConvert.DeserializeObject<List<SSHJob>>(json);
-            return config;
+            return JsonConvert.DeserializeObject<List<SSHJob>>(json);            
         }
 
         private void MakeExampleConfig()
-        {
+       { 
+            var QueuedCommands = new List<SSHJob>();
             for (int i = 0; i < 5; i++)
             {
                 QueuedCommands.Add(new SSHJob
@@ -148,6 +141,7 @@ namespace AutoSSH
                     NextRun = DateTime.Now + TimeSpan.FromHours(5),
                 });
             }
+            
 
             JsonSerializerSettings settings = new JsonSerializerSettings
             {
@@ -167,8 +161,6 @@ namespace AutoSSH
                 stream.Write(json);
                 stream.Close();
             }
-
         }
-
     }
 }
